@@ -13,3 +13,5 @@ Requirements:
 If sources disagree, explicitly identify the disagreement and preserve the relevant source references.
 
 The summary must distinguish source-supported findings from areas where evidence is incomplete.
+
+IMPORTANT: You MUST respond by populating the required structured output tool/function call fields. Do NOT output free text outside the tool call.

@@ -12,3 +12,5 @@ Requirements:
 - If the available evidence is insufficient for a recommendation, explicitly state that limitation.
 
 Recommendations must remain grounded in the supplied research material.
+
+IMPORTANT: You MUST respond by populating the required structured output tool/function call fields. Do NOT output free text outside the tool call.

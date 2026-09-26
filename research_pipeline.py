@@ -14,11 +14,89 @@ from chains.insight_extraction import build_insight_extraction_chain
 from chains.risk_analysis import build_risk_analysis_chain
 from chains.recommendation import build_recommendation_chain
 from chains.report_generation import build_report_generation_chain
+from chains.followup import build_followup_chain
 
 
 INSUFFICIENT_EVIDENCE = (
     "Insufficient evidence is available in the supplied sources."
 )
+
+
+def format_report_markdown(report: dict) -> str:
+    final_report = report.get("final_report", report)
+    topic_str = final_report.get("research_topic", report.get("research_topic", ""))
+
+    lines = [
+        "# Research Report",
+        "",
+        "## Research Topic",
+        "",
+        topic_str,
+        "",
+        "## Executive Summary",
+        "",
+        final_report.get("executive_summary", ""),
+        "",
+        "## Research Scope",
+        "",
+        final_report.get("research_scope", ""),
+        "",
+        "## Key Findings",
+        "",
+    ]
+
+    for finding in final_report.get("key_findings", []):
+        lines.append(f"- {finding}")
+
+    lines.extend(
+        [
+            "",
+            "## Key Insights",
+            "",
+        ]
+    )
+
+    for insight in final_report.get("key_insights", []):
+        lines.append(f"- {insight}")
+
+    lines.extend(
+        [
+            "",
+            "## Risks / Challenges",
+            "",
+        ]
+    )
+
+    for risk in final_report.get("risks_and_challenges", []):
+        lines.append(f"- {risk}")
+
+    lines.extend(
+        [
+            "",
+            "## Recommendations",
+            "",
+        ]
+    )
+
+    for recommendation in final_report.get("recommendations", []):
+        lines.append(f"- {recommendation}")
+
+    lines.extend(
+        [
+            "",
+            "## Conclusion",
+            "",
+            final_report.get("conclusion", ""),
+            "",
+            "## Sources / Citations",
+            "",
+        ]
+    )
+
+    for citation in final_report.get("citations", []):
+        lines.append(f"- {citation}")
+
+    return "\n".join(lines)
 
 
 class ResearchPipeline:
@@ -31,6 +109,7 @@ class ResearchPipeline:
         self.llm = llm
         self.memory = memory or ResearchMemory()
         self.monitoring = ResearchMonitoringCallback()
+        self.session_sources: Dict[str, Dict[str, Any]] = {}
 
         self.topic_analysis_chain = (
             build_topic_analysis_chain(llm)
@@ -56,6 +135,10 @@ class ResearchPipeline:
             build_report_generation_chain(llm)
         )
 
+        self.followup_chain = (
+            build_followup_chain(llm)
+        )
+
     def validate_topic(
         self,
         research_topic: str
@@ -71,10 +154,12 @@ class ResearchPipeline:
         self,
         urls: List[str],
         pdf_directory: str = "data/pdfs",
+        article_directory: str = "data/articles",
     ) -> Dict[str, Any]:
         documents, failures = load_all_sources(
             urls=urls,
             pdf_directory=pdf_directory,
+            article_directory=article_directory,
         )
 
         return {
@@ -169,6 +254,20 @@ class ResearchPipeline:
                     f"Page {page_number}"
                 )
 
+            elif source_type == "article":
+                file_name = metadata.get(
+                    "file_name",
+                    metadata.get(
+                        "source",
+                        "Unknown Article"
+                    )
+                )
+
+                citations.append(
+                    f"Source {index} — "
+                    f"{file_name}"
+                )
+
             else:
                 source = metadata.get(
                     "source",
@@ -188,6 +287,7 @@ class ResearchPipeline:
         research_topic: str,
         urls: Optional[List[str]] = None,
         pdf_directory: str = "data/pdfs",
+        article_directory: str = "data/articles",
     ) -> Dict[str, Any]:
 
         research_topic = self.validate_topic(
@@ -199,6 +299,7 @@ class ResearchPipeline:
         source_result = self.collect_sources(
             urls=urls,
             pdf_directory=pdf_directory,
+            article_directory=article_directory,
         )
 
         documents = self.preprocess_sources(
@@ -210,6 +311,13 @@ class ResearchPipeline:
         source_text = prepare_source_text(
             documents
         )
+
+        self.session_sources[session_id] = {
+            "research_topic": research_topic,
+            "documents": documents,
+            "source_text": source_text,
+        }
+
         self.memory.add_message(
             session_id,
             "user",
@@ -317,9 +425,8 @@ class ResearchPipeline:
         final_report.citations = (
             self.build_citations(documents)
         )
-        assistant_message = (
-            final_report.model_dump_json()
-        )
+        report_dict = final_report.model_dump()
+        assistant_message = format_report_markdown({"final_report": report_dict})
 
         self.memory.add_message(
             session_id,
@@ -370,6 +477,69 @@ class ResearchPipeline:
             ),
         }
 
+    def answer_followup(
+        self,
+        session_id: str,
+        question: str,
+    ) -> Dict[str, Any]:
+        if not question or not question.strip():
+            raise ValueError(
+                "Follow-up question cannot be empty."
+            )
+
+        question = question.strip()
+
+        session_data = self.session_sources.get(session_id)
+        if not session_data:
+            raise ValueError(
+                f"No research session found for session_id '{session_id}'. Run research first."
+            )
+
+        research_topic = session_data["research_topic"]
+        source_text = session_data["source_text"]
+        documents = session_data["documents"]
+
+        history_list = self.memory.get_history(session_id)
+        history_formatted = "\n".join(
+            [f"{msg['role'].capitalize()}: {msg['content']}" for msg in history_list]
+        )
+
+        followup_res = self.followup_chain.invoke(
+            {
+                "research_topic": research_topic,
+                "conversation_history": history_formatted,
+                "question": question,
+                "source_text": source_text,
+            },
+            config=self._stage_config("followup"),
+        )
+
+        self.memory.add_message(session_id, "user", question)
+
+        if followup_res.is_ambiguous:
+            opts = followup_res.clarification_options or []
+            assistant_content = f"{followup_res.clarification_message}\n" + "\n".join(opts)
+            self.memory.add_message(session_id, "assistant", assistant_content)
+            return {
+                "is_ambiguous": True,
+                "clarification_message": followup_res.clarification_message or "Could you clarify which risks you mean?",
+                "clarification_options": opts,
+                "answer": None,
+                "citations": [],
+            }
+        else:
+            citations = followup_res.citations
+            if not citations:
+                citations = self.build_citations(documents)
+            self.memory.add_message(session_id, "assistant", followup_res.answer or "")
+            return {
+                "is_ambiguous": False,
+                "clarification_message": None,
+                "clarification_options": [],
+                "answer": followup_res.answer,
+                "citations": citations,
+            }
+
     def get_session_history(
         self,
         session_id: str
@@ -385,3 +555,4 @@ class ResearchPipeline:
         self.memory.clear_session(
             session_id
         )
+        self.session_sources.pop(session_id, None)

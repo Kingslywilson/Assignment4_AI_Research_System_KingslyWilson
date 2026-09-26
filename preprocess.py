@@ -193,6 +193,23 @@ def prepare_source_text(
                 f"Page: {page_number}"
             )
 
+        elif source_type == "article":
+            file_name = metadata.get(
+                "file_name",
+                metadata.get(
+                    "source",
+                    "Unknown Article"
+                )
+            )
+            title = metadata.get("title", file_name)
+
+            source_label = (
+                f"Source {index}\n"
+                f"Type: Article\n"
+                f"Title: {title}\n"
+                f"File: {file_name}"
+            )
+
         else:
             source = metadata.get(
                 "source",

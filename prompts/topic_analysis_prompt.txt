@@ -15,3 +15,5 @@ If the available evidence is insufficient, explicitly state the limitation.
 Do not make recommendations at this stage.
 
 Return only information supported by the research topic and supplied sources.
+
+IMPORTANT: You MUST respond by populating the required structured output tool/function call fields. Do NOT output free text outside the tool call. If evidence for a topic is missing, populate the fields with explicit statements indicating insufficient evidence.

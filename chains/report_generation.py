@@ -7,33 +7,38 @@ from langchain_groq import ChatGroq
 
 class FinalReport(BaseModel):
     title: str = Field(
+        default="Research Report",
         description="Title of the final research report."
+    )
+    research_topic: str = Field(
+        description="The research topic being analyzed."
     )
     executive_summary: str = Field(
         description="Concise executive summary."
     )
-    findings: list[str] = Field(
+    research_scope: str = Field(
+        description="Scope and coverage of the research analysis."
+    )
+    key_findings: list[str] = Field(
         description="Major research findings supported by the supplied sources."
     )
-    insights: list[str] = Field(
+    key_insights: list[str] = Field(
         description="Key synthesized insights supported by the supplied sources."
     )
-    risks: list[str] = Field(
-        description="Important risks and uncertainties supported by the evidence."
+    risks_and_challenges: list[str] = Field(
+        description="Important risks, challenges, and uncertainties supported by the evidence."
     )
     recommendations: list[str] = Field(
         description="Evidence-based recommendations."
     )
-    limitations: list[str] = Field(
-        description="Research limitations and evidence gaps."
+    conclusion: str = Field(
+        description="Concluding synthesis and takeaways of the research report."
     )
     citations: list[str] = Field(
+        default_factory=list,
         description=(
             "Complete source citations. Each citation must identify the "
-            "source number and the original source details. For web sources, "
-            "include the source title and full URL. For PDF sources, include "
-            "the file name and page number. Do not return only 'Source 1', "
-            "'Source 2', etc."
+            "source number and original source details."
         )
     )
 

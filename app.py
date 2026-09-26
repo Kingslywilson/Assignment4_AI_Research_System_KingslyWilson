@@ -1,13 +1,20 @@
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 
-from research_pipeline import ResearchPipeline
+from research_pipeline import ResearchPipeline, format_report_markdown
 
 
 load_dotenv()
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 
 def create_llm() -> ChatGroq:
@@ -38,85 +45,10 @@ def save_report(report: dict) -> str:
         exist_ok=True
     )
 
-    final_report = report["final_report"]
-
-    lines = [
-        f"# {final_report['title']}",
-        "",
-        "## Executive Summary",
-        "",
-        final_report["executive_summary"],
-        "",
-        "## Findings",
-        "",
-    ]
-
-    for finding in final_report["findings"]:
-        lines.append(f"- {finding}")
-
-    lines.extend(
-        [
-            "",
-            "## Key Insights",
-            "",
-        ]
-    )
-
-    for insight in final_report["insights"]:
-        lines.append(f"- {insight}")
-
-    lines.extend(
-        [
-            "",
-            "## Risks",
-            "",
-        ]
-    )
-
-    for risk in final_report["risks"]:
-        lines.append(f"- {risk}")
-
-    lines.extend(
-        [
-            "",
-            "## Recommendations",
-            "",
-        ]
-    )
-
-    for recommendation in final_report[
-        "recommendations"
-    ]:
-        lines.append(f"- {recommendation}")
-
-    lines.extend(
-        [
-            "",
-            "## Limitations",
-            "",
-        ]
-    )
-
-    for limitation in final_report[
-        "limitations"
-    ]:
-        lines.append(f"- {limitation}")
-
-    lines.extend(
-        [
-            "",
-            "## Citations",
-            "",
-        ]
-    )
-
-    for citation in final_report[
-        "citations"
-    ]:
-        lines.append(f"- {citation}")
+    report_text = format_report_markdown(report)
 
     output_path.write_text(
-        "\n".join(lines),
+        report_text,
         encoding="utf-8"
     )
 
@@ -166,11 +98,14 @@ def main():
             llm=llm
         )
 
+        session_id = "default"
+
         result = pipeline.run(
-            session_id="default",
+            session_id=session_id,
             research_topic=research_topic,
             urls=urls,
             pdf_directory="data/pdfs",
+            article_directory="data/articles",
         )
 
         report_path = save_report(
@@ -200,23 +135,41 @@ def main():
 
         print("\nResearch report:")
         print("-" * 60)
+        print(format_report_markdown(result))
 
-        final_report = result[
-            "final_report"
-        ]
+        print("\n" + "=" * 60)
+        print("Interactive Follow-Up Session")
+        print("Enter your follow-up questions below. Type 'exit' or 'quit' to end.")
+        print("=" * 60)
 
-        print(
-            final_report[
-                "executive_summary"
-            ]
-        )
+        while True:
+            try:
+                followup_input = input("\nFollow-up question > ").strip()
+            except (EOFError, KeyboardInterrupt):
+                break
 
-        print("\nCitations:")
+            if not followup_input or followup_input.lower() in ["exit", "quit"]:
+                print("Ending research session. Goodbye!")
+                break
 
-        for citation in final_report[
-            "citations"
-        ]:
-            print(f"- {citation}")
+            followup_result = pipeline.answer_followup(
+                session_id=session_id,
+                question=followup_input
+            )
+
+            if followup_result.get("is_ambiguous"):
+                print(f"\n{followup_result['clarification_message']}")
+                for idx, opt in enumerate(followup_result.get("clarification_options", []), 1):
+                    if opt.strip().startswith(str(idx)):
+                        print(opt)
+                    else:
+                        print(f"{idx}. {opt}")
+            else:
+                print(f"\nAnswer:\n{followup_result['answer']}")
+                if followup_result.get("citations"):
+                    print("\nCitations:")
+                    for citation in followup_result["citations"]:
+                        print(f"- {citation}")
 
     except Exception as exc:
         print(

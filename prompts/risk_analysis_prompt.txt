@@ -11,3 +11,5 @@ Requirements:
 - If the evidence is insufficient to establish a risk, state that evidence is insufficient.
 
 Do not generate recommendations at this stage.
+
+IMPORTANT: You MUST respond by populating the required structured output tool/function call fields. Do NOT output free text outside the tool call.

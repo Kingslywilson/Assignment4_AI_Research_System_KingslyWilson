@@ -11,3 +11,5 @@ Requirements:
 - If evidence is insufficient for an insight, do not fabricate one.
 
 Insights must be traceable to the supplied research material.
+
+IMPORTANT: You MUST respond by populating the required structured output tool/function call fields. Do NOT output free text outside the tool call.

@@ -411,18 +411,32 @@ Expected Result
 The system should save the final research report to:
 
 outputs/research_report.md
+
+The report must follow the required section structure:
+- Research Topic
+- Executive Summary
+- Research Scope
+- Key Findings
+- Key Insights
+- Risks / Challenges
+- Recommendations
+- Conclusion
+- Sources / Citations
+
 Actual Result
 Report saved to: outputs/research_report.md
 
-The generated Markdown report contained:
-
-Executive Summary
-Findings
-Key Insights
-Risks
-Recommendations
-Limitations
-Citations
+The generated Markdown report contained all required sections:
+# Research Report
+## Research Topic
+## Executive Summary
+## Research Scope
+## Key Findings
+## Key Insights
+## Risks / Challenges
+## Recommendations
+## Conclusion
+## Sources / Citations
 
 Status: PASS
 
@@ -432,14 +446,13 @@ Web Source Example
 Source 1 — Climate change — https://www.who.int/news-room/fact-sheets/detail/climate-change-and-health
 PDF Source Example
 Source 1 — climate_change_health.pdf — Page 1
-Multi-Page PDF Example
-Source 3 — multi_page_climate_report.pdf — Page 1
-Source 4 — multi_page_climate_report.pdf — Page 2
+Article (.txt) Source Example
+Source 5 — climate_change_health.txt
 
 Status: PASS
 
 15. Follow-Up and Ambiguity Tests
-Test Case 24 — Follow-Up Question With Source Grounding
+Test Case 24 — Follow-up Question
 Input
 
 Initial research topic:
@@ -448,30 +461,54 @@ What are the health impacts of climate change?
 
 Follow-up question:
 
-What does the source say specifically about mental health?
+What are the main security risks?
 
 Expected Result
 
-The follow-up interaction should use the existing research session and remain grounded in the supplied sources.
+Answer based on previously collected sources and research context.
 
 Actual Result
 
-The response used information from the supplied climate-change document and referenced the corresponding source citation.
+The system provided a grounded answer using the previously loaded research documents (PDFs, text articles, web sources) and included citations:
+
+Answer:
+Based on the provided research context and sources, the direct security risks (such as geopolitical or physical conflict) associated with climate change are not detailed in the supplied material. However, the sources highlight critical human, operational, and system-level security risks:
+1. Food and Water Insecurity (Human Security): Changing rainfall patterns, droughts, and flooding reduce agricultural yields and jeopardize access to safe drinking water.
+2. Population Displacement and Infrastructure Loss: Extreme weather events cause destruction of homes, displacement, and social destabilization.
+3. Healthcare System Strain: Surges in climate-sensitive health conditions overburden healthcare infrastructure.
+4. Mental Health and Psychological Stress: Prolonged climate impacts and loss of livelihoods contribute to psychological distress.
+
+Citations:
+- Source 1 — climate_change_health.pdf — Page 1
+- Source 2 — conflicting_climate_report.pdf — Page 1
+- Source 3 — multi_page_climate_report.pdf — Page 1
+- Source 4 — multi_page_climate_report.pdf — Page 2
+- Source 5 — climate_change_health.txt
 
 Status: PASS
 
-Test Case 25 — Ambiguous Research Question
+Test Case 25 — Ambiguous Follow-up
 Input
 
-A deliberately ambiguous research question was submitted.
+Follow-up question:
+
+What about the risks?
 
 Expected Result
 
-The system should request clarification instead of making unsupported assumptions.
+Ask user to clarify which risk category.
 
 Actual Result
 
-The system requested clarification before proceeding.
+The system detected the ambiguous query and requested clarification without making unsupported assumptions:
+
+Is Ambiguous: True
+Clarification Message: Could you clarify which risks you mean?
+Clarification Options:
+1. Security risks
+2. Privacy risks
+3. Operational risks
+4. Implementation risks
 
 Status: PASS
 
@@ -481,6 +518,7 @@ Input validation	PASS
 Web loading	PASS
 Source failure handling	PASS
 PDF loading	PASS
+Article (.txt) loading	PASS
 PDF metadata	PASS
 Multi-page PDF metadata	PASS
 Whitespace preprocessing	PASS
@@ -501,6 +539,7 @@ Report generation	PASS
 Citation traceability	PASS
 Follow-up source grounding	PASS
 Ambiguity clarification	PASS
+
 17. Known Observations
 
 During testing, the Groq API initially returned a request-size error when multiple large web sources were supplied.
@@ -520,7 +559,7 @@ The final report also showed some character-encoding/display artifacts when view
 â€™
 â€”
 
-The application writes the Markdown file using UTF-8 encoding.
+The application writes the Markdown file using UTF-8 encoding and configures sys.stdout to UTF-8 on Windows.
 
 18. Final Testing Conclusion
 
@@ -529,7 +568,7 @@ The implemented AI Research & Report Generation System was tested across its maj
 The tests verified:
 
 Input validation
-Web and PDF data collection
+Web, PDF, and Article (.txt) data collection
 Source failure handling
 Document preprocessing
 Metadata preservation
@@ -539,13 +578,11 @@ Insufficient-evidence handling
 Conflict identification
 Session-based memory
 Session isolation and reset
-Follow-up source grounding
-Ambiguity clarification
+Follow-up question answering with source grounding
+Ambiguous follow-up handling with user clarification
 Token usage monitoring
 LangSmith tracing
-Report generation
+Full 9-section report generation
 Citation traceability
 
 Overall Testing Status: PASS
-
-This version preserves the test results from your uploaded log while cleaning the Markdown formatting and organizing the test cases into a submission-ready structure.
