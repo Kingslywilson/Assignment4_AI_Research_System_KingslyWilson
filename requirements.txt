@@ -1,0 +1,9 @@
+langchain
+langchain-core
+langchain-community
+langchain-groq
+langsmith
+pypdf
+beautifulsoup4
+python-dotenv
+pydantic
